@@ -228,28 +228,28 @@ pub struct GameplayUpdateShell<'a> {
     /// current map time
     pub time: f32,
 
-    /// current game speed
+    /// Current game speed
     pub game_speed: f32,
 
     /// NOTE: use an action to set this, dont manually set it
     pub completed: bool,
 
-    /// current mods
+    /// Current mods
     pub mods: &'a ModManager,
 
-    /// the current timing point
+    /// The current timing point
     pub current_timing_point: &'a beatmaps::TimingPoint,
 
-    /// the current gameplay mode
+    /// The current gameplay mode
     pub gameplay_type: &'a GameplayTypeSmall,
 
-    /// our current score
+    /// Our current score
     pub score: &'a IngameScore,
 
-    // all timing points
+    // All timing points
     pub timing_points: &'a TimingPointHelper,
 
-    /// list of actions to be performed
+    /// List of actions to be performed
     pub actions: Vec<gameplay::Action>,
 
     /// Game settings
@@ -258,6 +258,7 @@ pub struct GameplayUpdateShell<'a> {
     /// Action queue
     pub action_queue: &'a mut ActionQueue,
 
+    /// Window size
     pub window_size: Vector2,
 }
 impl GameplayUpdateShell<'_> {
@@ -355,6 +356,26 @@ impl GameplayUpdateShell<'_> {
     }
 
 }
+
+
+pub struct GameplayCustomShell<'a, T> {
+    /// The current gameplay mode
+    pub gameplay_type: &'a GameplayTypeSmall,
+    
+    // All timing points
+    pub timing_points: &'a TimingPointHelper,
+    
+    // /// Game settings
+    // pub settings: &'a Settings,
+
+    // /// Window size
+    // pub window_size: Vector2,
+
+    /// Some custom value
+    pub custom: T,
+}
+
+
 
 
 #[allow(dead_code)]

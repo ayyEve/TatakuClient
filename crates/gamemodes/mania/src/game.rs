@@ -29,7 +29,7 @@ use engine::{
         GameplayEvent,
         PlayfieldNonsense,
         GamemodeProperties,
-        gameplay_manager::{ GameplayUpdateShell, GameplayDrawShell },
+        gameplay_manager::{ GameplayUpdateShell, GameplayDrawShell, GameplayCustomShell },
     },
 };
 
@@ -805,7 +805,8 @@ impl Gamemode for ManiaGame {
         }
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.take();
         match event {
             #[cfg(feature="graphics")]
             GameplayEvent::SetBounds { bounds, full_window } => {
@@ -947,13 +948,7 @@ impl Gamemode for ManiaGame {
             .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
 
-    fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")]
-        let timing_points = engine::gameplay::TimingPointHelper::new(
-            beatmap.get_timing_points(),
-            beatmap.slider_velocity()
-        );
-
+    fn reset(&mut self, shell: &GameplayCustomShell<'_, &Beatmap>) {
         for note in self.columns.iter_mut().flatten() {
             note.reset();
         }
@@ -966,14 +961,14 @@ impl Gamemode for ManiaGame {
         #[cfg(feature="graphics")]
         if self.timing_bars.is_empty() {
             // load timing bars
-            let parent_tps = timing_points
+            let parent_tps = shell.timing_points
                 .iter()
                 .filter(|t| !t.is_inherited())
                 .collect::<Vec<&engine::beatmaps::TimingPoint>>();
 
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
-            let step = timing_points.beat_length_at(time, false);
+            let step = shell.timing_points.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
             let bar_width = (self.playfield.column_width + self.playfield.column_spacing) * self.column_count as f32 - self.playfield.column_spacing;
@@ -981,7 +976,7 @@ impl Gamemode for ManiaGame {
             loop {
                 // if theres a bpm change, adjust the current time to that of the bpm change
                 let measure = if tp_index < parent_tps.len() { parent_tps[tp_index].meter } else { 4 };
-                let next_bar_time = timing_points.beat_length_at(time, false) * measure as f32;
+                let next_bar_time = shell.timing_points.beat_length_at(time, false) * measure as f32;
 
                 // edge case for aspire maps
                 if next_bar_time.is_nan() || next_bar_time == 0.0 {

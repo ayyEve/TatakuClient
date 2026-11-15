@@ -4,6 +4,7 @@ use tataku::{
     Vector2,
 };
 use engine::{
+    gameplay::TimingPointHelper,
     beatmaps::{
         Beatmap,
         osu::{
@@ -11,7 +12,6 @@ use engine::{
             CurveType,
         },
     },
-    gameplay::TimingPointHelper,
 };
 
 

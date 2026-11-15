@@ -24,9 +24,9 @@ impl gameplay::Gamemode for NoMode {
     #[cfg(feature="gameplay")] 
     fn skip_intro(&mut self, _: f32) -> Option<f32> { None }
 
-    fn reset(&mut self, _: &beatmaps::Beatmap) {}
+    fn reset(&mut self, _: &GameplayCustomShell<'_, &beatmaps::Beatmap>) {}
     fn force_update_settings(&mut self, _: &Settings) {}
-    fn handle_gameplay_event(&mut self, _: gameplay::GameplayEvent) {}
+    fn handle_gameplay_event(&mut self, _: &mut GameplayCustomShell<'_, gameplay::GameplayEvent>) {}
     
     #[cfg(feature="graphics")]
     fn reload_skin(&mut self, _: &str, _: &mut dyn graphics::SkinProvider) -> graphics::TextureSource { 

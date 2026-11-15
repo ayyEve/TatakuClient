@@ -8,8 +8,9 @@ pub enum BeatmapEvent {
     Break { start: f32, end: f32 }
 }
 
-
+#[derive(Default)]
 pub enum GameplayEvent {
+    #[default] None,
     Paused,
     UnPaused,
 

@@ -312,7 +312,7 @@ impl Gamemode for TaikoGame {
     fn new(
         beatmap: &Beatmap,
         _diff_calc_only: bool,
-        settings: &engine::Settings
+        settings: &engine::Settings,
     ) -> tataku::Result<Self> {
         let metadata = beatmap.get_beatmap_meta();
 
@@ -328,10 +328,7 @@ impl Gamemode for TaikoGame {
             true
         ));
 
-        let timing_points = TimingPointHelper::new(
-            beatmap.get_timing_points(),
-            beatmap.slider_velocity()
-        );
+        let timing_points = TimingPointHelper::new_from_beatmap(beatmap);
 
         let mut s = Self {
             taiko_settings: settings.clone(),
@@ -672,7 +669,8 @@ impl Gamemode for TaikoGame {
         );
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.take();
         match event {
             GameplayEvent::ApplyMods(mods) => {
                 let old_sv_mult = self.taiko_settings.sv_multiplier;
@@ -1043,13 +1041,7 @@ impl Gamemode for TaikoGame {
             .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
 
-    fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")]
-        let timing_points = TimingPointHelper::new(
-            beatmap.get_timing_points(),
-            beatmap.slider_velocity()
-        );
-
+    fn reset(&mut self, shell: &GameplayCustomShell<'_, &Beatmap>) {
         for queue in [&mut self.notes, &mut self.other_notes] {
             queue.index = 0;
 
@@ -1061,7 +1053,7 @@ impl Gamemode for TaikoGame {
                 if self.current_mods.has_mod(NoSV) {
                     note.set_sv(self.taiko_settings.sv_multiplier);
                 } else {
-                    let sv = timing_points
+                    let sv = shell.timing_points
                         .slider_velocity_at(note.time())
                         / SV_FACTOR;
 
@@ -1077,7 +1069,7 @@ impl Gamemode for TaikoGame {
         #[cfg(feature="graphics")] {
             if self.timing_bars.is_empty() {
                 // load timing bars
-                let parent_tps = timing_points
+                let parent_tps = shell.timing_points
                     .iter()
                     .filter(|t| !t.is_inherited())
                     .collect::<Vec<&TimingPoint>>();
@@ -1085,17 +1077,17 @@ impl Gamemode for TaikoGame {
                 let mut sv = self.taiko_settings.sv_multiplier;
                 let mut time = parent_tps[0].time;
                 let mut tp_index = 0;
-                let step = timing_points.beat_length_at(time, false);
+                let step = shell.timing_points.beat_length_at(time, false);
                 time %= step; // get the earliest bar line possible
 
                 loop {
                     if !self.current_mods.has_mod(NoSV) {
-                        sv = (timing_points.slider_velocity_at(time) / SV_FACTOR)
+                        sv = (shell.timing_points.slider_velocity_at(time) / SV_FACTOR)
                             * self.taiko_settings.sv_multiplier;
                     }
 
                     // if theres a bpm change, adjust the current time to that of the bpm change
-                    let next_bar_time = timing_points
+                    let next_bar_time = shell.timing_points
                         .beat_length_at(time, false)
                         * BAR_SPACING; // bar spacing is actually the timing point measure
 

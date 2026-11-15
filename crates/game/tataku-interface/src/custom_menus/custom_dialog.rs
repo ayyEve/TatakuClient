@@ -165,10 +165,6 @@ impl Widget<actions::Action> for BuiltCustomDialog {
 
 
 
-
-
-
-
 // #[test]
 // fn test() {
 //     for (_, i) in tataku_resources::dialogs::ALL {

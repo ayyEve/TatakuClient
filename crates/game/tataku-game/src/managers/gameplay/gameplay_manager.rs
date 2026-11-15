@@ -155,7 +155,7 @@ pub struct GameplayManager {
 impl GameplayManager {
     fn new(
         beatmap: engine::beatmaps::Beatmap,
-        mut gamemode: Box<dyn Gamemode>,
+        gamemode: Box<dyn Gamemode>,
         mut mods: ModManager,
         settings: &Settings,
         database: &dyn engine::database::DatabaseProvider,
@@ -203,8 +203,6 @@ impl GameplayManager {
             }
         ).into());
 
-        // make sure the gamemode has the correct mods applied
-        gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(current_mods.clone()));
 
         Self {
             actions,
@@ -443,6 +441,9 @@ impl GameplayManager {
     // can be from either paused or new
     pub fn start(&mut self) {
         #[cfg(feature="graphics")] {
+
+
+
             // set bounds
             let event = if let Some(bounds) = self.state.fit_to_bounds {
                 GameplayEvent::SetBounds {
@@ -455,7 +456,7 @@ impl GameplayManager {
                     full_window: true
                 }
             };
-            self.gamemode.handle_gameplay_event(event);
+            self.run_gameplay_event(event);
 
             // set cursor visibility
             self.actions.push(CursorAction::SetVisible(
@@ -473,6 +474,9 @@ impl GameplayManager {
 
         if !self.state.started {
             self.reset();
+
+            // make sure the gamemode has the correct mods applied
+            self.run_gameplay_event(GameplayEvent::ApplyMods(self.mods.clone()));
 
             //TODO: probably want to skip other things as well
             #[cfg(feature="gameplay")]
@@ -497,8 +501,7 @@ impl GameplayManager {
             self.state.started = true;
 
             // run the startup function
-            if let Some(on_start)
-            = self.on_start.take() {
+            if let Some(on_start) = self.on_start.take() {
                 on_start(self);
             }
         } else if self.state.lead_in_time <= 0.0 {
@@ -511,9 +514,8 @@ impl GameplayManager {
                 SpectatorAction::UnPause
             ));
             self.actions.push(SongAction::Play.into());
-            self.gamemode.handle_gameplay_event(GameplayEvent::UnPaused);
+            self.run_gameplay_event(GameplayEvent::UnPaused);
         }
-
 
         // re init ui
         #[cfg(feature="graphics")] self.layout_ui();
@@ -538,17 +540,26 @@ impl GameplayManager {
             |this| SpectatorFrame::new(this.time(), SpectatorAction::Pause),
         );
 
-        self.gamemode.handle_gameplay_event(GameplayEvent::Paused);
+        self.run_gameplay_event(GameplayEvent::Paused);
     }
     pub fn reset(&mut self) {
         self.health.reset();
         self.key_counter.reset();
         self.timing_points.reset();
-        self.gamemode.reset(&self.beatmap);
+
+        self.gamemode.reset(&GameplayCustomShell {
+            gameplay_type: &self.gameplay_type_small,
+            timing_points: &self.timing_points,
+            // settings: &self.settings,
+            // window_size: ,
+            custom: &self.beatmap,
+        });
+
+
         self.state.reset(self.mods.get_speed());
 
         if self.gameplay_type_small.is_preview() {
-            self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+            self.run_gameplay_event(GameplayEvent::ApplyMods(
                 self.mods.clone()
             ));
         } else {
@@ -649,6 +660,14 @@ impl GameplayManager {
 
 // update fns
 impl GameplayManager {
+
+    fn run_gameplay_event(&mut self, event: GameplayEvent) {
+        self.gamemode.handle_gameplay_event(&mut GameplayCustomShell { 
+            gameplay_type: &self.gameplay_type_small, 
+            timing_points: &self.timing_points, 
+            custom: event
+        });
+    }
 
     #[cfg(feature="gameplay")]
     fn update_scores(&mut self, values: &mut ValueCollection) {
@@ -830,12 +849,12 @@ impl GameplayManager {
         for tp_update in self.timing_points.update(time) {
             match tp_update {
                 TimingPointUpdate::BeatHappened(pulse_length)
-                    => self.gamemode.handle_gameplay_event(GameplayEvent::BeatHappened {
+                    => self.run_gameplay_event(GameplayEvent::BeatHappened {
                         pulse_length
                     }),
 
                 TimingPointUpdate::KiaiChanged(enabled)
-                    => self.gamemode.handle_gameplay_event(GameplayEvent::KiaiChanged {
+                    => self.run_gameplay_event(GameplayEvent::KiaiChanged {
                         enabled
                     }),
             }
@@ -1506,7 +1525,7 @@ impl GameplayManager {
                 }
 
                 self.mods = Arc::new(mods);
-                self.gamemode.handle_gameplay_event(GameplayEvent::ApplyMods(
+                self.run_gameplay_event(GameplayEvent::ApplyMods(
                     self.mods.clone()
                 ));
             },
@@ -1514,7 +1533,7 @@ impl GameplayManager {
             GameplayAction::FitToArea(bounds) => {
                 // info!("fitting to area: {bounds:?}");
                 self.state.fit_to_bounds = Some(bounds);
-                self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds {
+                self.run_gameplay_event(GameplayEvent::SetBounds {
                     bounds,
                     full_window: false
                 });
@@ -1919,7 +1938,7 @@ impl GameplayManager {
     pub fn window_size_changed(&mut self, window_size: Vector2) {
         self.state.window_size = window_size;
         if self.state.fit_to_bounds.is_none() {
-            self.gamemode.handle_gameplay_event(GameplayEvent::SetBounds {
+            self.run_gameplay_event(GameplayEvent::SetBounds {
                 bounds: Bounds::new(Vector2::ZERO, window_size),
                 full_window: true
             });

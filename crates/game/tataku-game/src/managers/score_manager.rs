@@ -245,7 +245,7 @@ impl ScoreManager {
             self.scores = scores.clone();
             values.score_list.scores = scores;
             values.score_list.loaded = true;
-            info!("scores loaded: {:?}", self.scores);
+            debug!("scores loaded: {:?}", self.scores);
         }
 
     }

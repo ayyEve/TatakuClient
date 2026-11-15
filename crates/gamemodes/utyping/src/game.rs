@@ -208,7 +208,8 @@ impl Gamemode for UTypingGame {
 
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.take();
         match event {
             GameplayEvent::SetBounds { 
                 bounds, 
@@ -333,9 +334,7 @@ impl Gamemode for UTypingGame {
             .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
         
-    fn reset(&mut self, beatmap: &Beatmap) {
-        #[cfg(feature="graphics")] 
-        let timing_points = TimingPointHelper::new(beatmap.get_timing_points(), beatmap.slider_velocity());
+    fn reset(&mut self, shell: &GameplayCustomShell<'_, &Beatmap>) {
         
         for note in self.notes.iter_mut() {
             note.reset();
@@ -360,20 +359,20 @@ impl Gamemode for UTypingGame {
         #[cfg(feature="graphics")] 
         if self.timing_bars.is_empty() {
             // load timing bars
-            let parent_tps = timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
+            let parent_tps = shell.timing_points.iter().filter(|t|!t.is_inherited()).collect::<Vec<&TimingPoint>>();
             let mut sv; // = self.game_settings.sv_multiplier;
             let mut time = parent_tps[0].time;
             let mut tp_index = 0;
-            let step = timing_points.beat_length_at(time, false);
+            let step = shell.timing_points.beat_length_at(time, false);
             time %= step; // get the earliest bar line possible
 
             loop {
                 // if !self.game_settings.static_sv {
-                    sv = (timing_points.slider_velocity_at(time) / SV_FACTOR) * self.game_settings.sv_multiplier;
+                    sv = (shell.timing_points.slider_velocity_at(time) / SV_FACTOR) * self.game_settings.sv_multiplier;
                 // }
 
                 // if theres a bpm change, adjust the current time to that of the bpm change
-                let next_bar_time = timing_points.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
+                let next_bar_time = shell.timing_points.beat_length_at(time, false) * BAR_SPACING; // bar spacing is actually the timing point measure
 
                 // edge case for aspire maps
                 if next_bar_time.is_nan() || next_bar_time == 0.0 {

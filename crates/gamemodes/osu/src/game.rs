@@ -17,7 +17,6 @@ use engine::{
         Beatmap,
         NoteType,
         BeatmapMeta,
-        TimingPoint,
         map_difficulty,
     },
     gameplay,
@@ -83,7 +82,6 @@ pub struct OsuGame {
 
     metadata: Arc<BeatmapMeta>,
     mods: Arc<ModManager>,
-    timing_points: Vec<TimingPoint>,
 
     new_playfield_pending: bool,
 }
@@ -391,10 +389,7 @@ impl Gamemode for OsuGame {
         let od = Self::get_od(&metadata, &mods);
         let scaling_helper = Arc::new(ScalingHelper::new_with_settings(&game_settings, cs, effective_window_size, mods.has_mod(HardRock)));
 
-        let timing_points = TimingPointHelper::new(
-            map.get_timing_points(),
-            map.slider_velocity(),
-        );
+        let timing_points = TimingPointHelper::new_from_beatmap(map);
 
         let parent_dir = map.get_parent_dir().unwrap_or_default().to_string_lossy().to_string();
         let mut actions = actions::ActionQueue::new();
@@ -451,7 +446,6 @@ impl Gamemode for OsuGame {
                     #[cfg(feature="graphics")] judgment_helper: JudgmentImageHelper::new(OsuHitJudgments::variants().to_vec()),
                     metadata,
                     mods,
-                    timing_points: map.get_timing_points(),
                     #[cfg(feature="graphics")] smoke_emitter: None,
                     #[cfg(feature="graphics")] cursor,
 
@@ -750,7 +744,8 @@ impl Gamemode for OsuGame {
         }
     }
 
-    fn handle_gameplay_event(&mut self, event: GameplayEvent) {
+    fn handle_gameplay_event(&mut self, shell: &mut GameplayCustomShell<'_, GameplayEvent>) {
+        let event = shell.custom.take();
         match event {
             GameplayEvent::SetBounds { bounds, full_window } => {
 
@@ -770,7 +765,6 @@ impl Gamemode for OsuGame {
             }
 
             GameplayEvent::ApplyMods(mods) => {
-
                 let had_easy_or_hr = self.mods.has_mod(Easy) || self.mods.has_mod(HardRock);
 
                 let has_hr = mods.has_mod(HardRock);
@@ -860,7 +854,7 @@ impl Gamemode for OsuGame {
                 #[cfg(feature="graphics")]
                 if has_otb != had_otb {
                     if has_otb {
-                        let timing_points = self.timing_points
+                        let timing_points = shell.timing_points
                             .iter()
                             .filter(|t| !t.is_inherited())
                             .copied()
@@ -1233,7 +1227,7 @@ impl Gamemode for OsuGame {
             .collect::<Vec<&dyn engine::gameplay::HitObject>>()
     }
 
-    fn reset(&mut self, _beatmap: &Beatmap) {
+    fn reset(&mut self, _: &GameplayCustomShell<'_, &Beatmap>) {
         // let ar = scale_by_mods(self.metadata.ar, 0.5, 1.4, &self.mods).clamp(1.0, 11.0);
 
         // reset notes
