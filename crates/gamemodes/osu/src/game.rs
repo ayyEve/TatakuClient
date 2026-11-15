@@ -727,6 +727,8 @@ impl Gamemode for OsuGame {
                             }
                         },
                         HitObject::Slider(slider) => {
+                            if slider.initial_hit.is_some() { continue; }
+
                             let in_hit_window = frame.time < slider.time + self.miss_window;
 
                             let was_hit = slider.pos.distance_squared(mouse_pos) <= cs * cs;
@@ -742,7 +744,7 @@ impl Gamemode for OsuGame {
                                         ));
                                     }
                                 } else if let Some(judge) = shell.check_judgment(&self.hit_windows, frame.time, note_time) {
-                                    slider.pending_combo.push((*judge, slider.pos));
+                                    slider.initial_hit = Some(*judge);
 
                                     if judge == &OsuHitJudgments::X300 && !self.settings.show_300s {
                                         // dont show the judgment

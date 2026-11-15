@@ -50,7 +50,7 @@ pub struct Slider {
     pub edge_sets: Vec<[u8; 2]>,
     pub edge_sounds: Vec<u8>,
 
-    /// used for repeat sliders
+    pub initial_hit: Option<HitJudgment>,
     pub pending_combo: Vec<(HitJudgment, Vector2)>,
     pub judgements_added: usize,
 
@@ -365,8 +365,8 @@ impl Slider {
 
         // check if the start of the slider was missed.
         // if it was, perform a miss
-        if self.pending_combo.is_empty() && shell.time >= self.time + shell.hitwindow_miss {
-            self.pending_combo.push((OsuHitJudgments::Miss, self.pos));
+        if self.initial_hit.is_none() && shell.time >= self.time + shell.hitwindow_miss {
+            self.initial_hit = Some(OsuHitJudgments::Miss);
         }
 
         if shell.time < self.curve.end_time {
@@ -443,14 +443,14 @@ impl Slider {
         }
 
         // Check final judgement
-        if shell.time > self.curve.end_time && self.pending_combo.len() == 1 + self.dot_count {
+        if shell.time >= self.curve.end_time && self.pending_combo.len() == self.dot_count {
             let time_end_pos = shell.coords.to_window(self.time_end_pos);
 
             let distance = time_end_pos.distance_squared(shell.cursor_pos);
 
             let sliding_ok = shell.holding && distance <= (radius * OK_RADIUS_MULT).powi(2);
 
-            let start_judgement = self.pending_combo.first().unwrap().0;
+            let start_judgement = self.initial_hit.unwrap();
 
             let judge = if start_judgement == OsuHitJudgments::Miss {
                 if self.dot_count == 0 {
@@ -803,6 +803,7 @@ impl Slider {
 
     pub fn reset(&mut self) {
         self.pending_combo.clear();
+        self.initial_hit = None;
         self.slides_complete = 0;
         self.moving_forward = true;
 
