@@ -113,10 +113,7 @@ impl WgpuAtlas {
         }
     }
     
-    pub fn remove(
-        &mut self, 
-        tex: tataku::TextureReference,
-    ) {
+    pub fn remove(&mut self, tex: tataku::TextureReference) {
         self.atlas.remove_entry(tex);
     }
 

@@ -16,9 +16,18 @@ pub struct OsuDirect {
 }
 impl OsuDirect {
     pub fn new(settings: &Settings) -> Self {
-        let connection = OsuConnection::setup(settings);
+
+        // connect async so it doesnt block loading
+        let connection = Arc::new(Mutex::new(None));
+        let connection2 = connection.clone();
+        let settings = settings.integrations.osu.clone();
+        tokio::spawn(async move {
+            let conn = OsuConnection::setup(&settings);
+            *connection2.lock().await = conn;
+        });
 
         Self {
+            connection,
             capabilities: OnlineContentCapabilities { 
                 engine_id: "osu_direct".to_string(), 
                 display_name: "osu!".to_string(), 
@@ -66,7 +75,6 @@ impl OsuDirect {
                     ),
                 ].into_iter().collect()
             },
-            connection: Arc::new(Mutex::new(connection)),
         }
     }
 }

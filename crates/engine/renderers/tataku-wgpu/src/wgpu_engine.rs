@@ -887,10 +887,7 @@ impl graphics::RenderingEngine for WgpuEngine<'_> {
         ))
     }
 
-    fn free_tex(
-        &mut self, 
-        tex: tataku::TextureReference, 
-    ) {
+    fn free_tex(&mut self, tex: tataku::TextureReference) {
         if tex.is_empty() { return }
 
         // remove from texture atlas

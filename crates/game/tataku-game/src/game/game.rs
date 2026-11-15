@@ -71,12 +71,11 @@ pub struct Game {
     game_start: tataku::Instant,
     pub(super) settings_updated: bool,
 
-    #[cfg(feature="graphics")] wallpapers: Vec<graphics::Image>,
+    #[cfg(feature="graphics")] pub(super) wallpapers: Vec<graphics::Image>,
     #[cfg(feature="graphics")] fps_counters: FpsCounters,
     #[cfg(feature="graphics")] builtin_menus: BuiltinMenus,
     #[cfg(feature="graphics")] pub(super) background_image: Option<graphics::Image>,
     #[cfg(feature="graphics")] pub queued_events: Vec<(TatakuEvent, Option<TatakuValue>)>,
-    #[cfg(feature="graphics")] background_loader: Option<engine::io::AsyncLoader<Option<graphics::Image>>>,
     // spec_watch_action: SpectatorWatchAction,
 
     pub(super) mods_queue: Vec<engine::gameplay::mods::ModManager>,
@@ -145,7 +144,6 @@ impl Game {
             // misc
             game_start: tataku::Instant::now(),
             settings_updated: false,
-            #[cfg(feature="graphics")] background_loader: None,
             #[cfg(feature="graphics")] queued_events: Vec::new(),
             #[cfg(feature="graphics")] fps_counters: FpsCounters::new(window_counters),
 
@@ -541,7 +539,7 @@ impl Game {
             for (i, _) in self.gameplay_managers.values_mut() {
                 i.cleanup_textures(&mut self.skin_manager);
             }
-
+ 
             if let Some(i) = self.current_state.get_ingame() {
                 i.cleanup_textures(&mut self.skin_manager);
             }
@@ -624,27 +622,6 @@ impl Game {
                 manager.window_size_changed(window_size);
             }
         }
-
-        // check bg loaded
-        #[cfg(feature="graphics")]
-        if let Some(loader) = self.background_loader.clone()
-        && let Some(image) = loader.check() {
-            self.background_loader = None;
-
-            // unload the old image so the atlas can reuse the space
-            if let Some(old_img) = self.background_image.take() {
-                self.actions.push(actions::window::WindowAction::FreeTexture(*old_img.tex).into());
-            }
-
-            self.background_image = image;
-
-            if self.background_image.is_none() && !self.wallpapers.is_empty() {
-                self.background_image = Some(self.wallpapers[0].clone());
-            }
-
-            self.resize_bg();
-        }
-
         
         // update counters
         #[cfg(feature="graphics")] {

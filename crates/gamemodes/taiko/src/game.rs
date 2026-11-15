@@ -499,7 +499,8 @@ impl Gamemode for TaikoGame {
         frame: ReplayFrame,
         shell: &mut GameplayUpdateShell,
     ) {
-        let ReplayAction::Press(key) = frame.action else { return };
+        let ReplayAction::Press(key) = frame.action 
+        else { return };
 
         // turn the keypress into a hit type
         let taiko_hit_type = match key {
@@ -507,7 +508,7 @@ impl Gamemode for TaikoGame {
             KeyPress::LeftDon  => TaikoHit::LeftDon,
             KeyPress::RightDon => TaikoHit::RightDon,
             KeyPress::RightKat => TaikoHit::RightKat,
-            _ => TaikoHit::LeftKat
+            _ => return
         };
         let is_left = taiko_hit_type == TaikoHit::LeftKat
             || taiko_hit_type == TaikoHit::LeftDon;

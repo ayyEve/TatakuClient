@@ -89,7 +89,10 @@ impl SkinManager {
         let to_attempt = match source {
             // raw textures wont have a @2x variant, and should include the ext
             TextureSource::Raw => {
-                let filename = name.file_name().unwrap().to_string_lossy().into_owned();
+                let Some(filename) = name.file_name() 
+                else { return TextureState::Failed };
+
+                let filename = filename.to_string_lossy().into_owned();
                 vec![ 
                     (filename.clone(), Vector2::ONE),
                 ]

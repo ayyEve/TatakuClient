@@ -851,11 +851,19 @@ impl Game {
                     false
                 );
 
+
+                if self.background_image.is_none() && !self.wallpapers.is_empty() {
+                    self.background_image = Some(self.wallpapers[0].clone());
+                }
+
                 if let Some(i) = &mut self.background_image {
                     i.origin = Vector2::ZERO;
                 }
 
                 self.resize_bg();
+                
+                // unload the old image so the atlas can reuse the space
+                self.skin_manager.free_by_usage(graphics::SkinUsage::Background, false);
             },
             #[cfg(feature="graphics")]
             GameAction::CopyToClipboard(text) => { 

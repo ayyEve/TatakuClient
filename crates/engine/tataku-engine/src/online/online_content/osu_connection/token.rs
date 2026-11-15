@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{settings::integration::OsuIntegration, *};
 use super::consts::*;
 use std::time::SystemTime;
 
@@ -11,7 +11,7 @@ pub struct Token {
     pub refresh_token: String,
 }
 impl Token {
-    pub fn authenticate(settings: &Settings) -> tataku::Result<Self> {
+    pub fn authenticate(settings: &OsuIntegration) -> tataku::Result<Self> {
         #[derive(Serialize)]
         struct Request {
             client_id: String,
@@ -21,8 +21,6 @@ impl Token {
             grant_type: String, //"password"
             scope: String, // "*"
         }
-        let osu_integration = settings.integrations.osu.clone();
-
 
         let response = ureq::post(TOKEN_URL)
             .content_type("application/json")
@@ -31,8 +29,8 @@ impl Token {
             .send(serde_json::to_string(&Request {
                 client_id: LAZER_CLIENT_ID.to_owned(), // osu lazer's client id
                 client_secret: LAZER_CLIENT_SECRET.to_owned(), // osu lazer's client secret
-                username: osu_integration.username.clone(),
-                password: osu_integration.password.clone(),
+                username: settings.username.clone(),
+                password: settings.password.clone(),
                 grant_type: "password".to_owned(),
                 scope: "*".to_owned(),
             }).unwrap())?;
