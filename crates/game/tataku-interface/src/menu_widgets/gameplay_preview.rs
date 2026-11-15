@@ -60,6 +60,7 @@ impl GameplayPreview {
         let widget_sender = self.widget_sender.clone();
         actions.push(actions::game::GameAction::NewGameplayManager(actions::game::NewManager {
             owner: source,
+            jump_to_current_audio_time: true,
             playmode: self.playmode.as_ref().cloned().map(ArcStr::from),
             gameplay_mode: Some(actions::game::GameplayTypeInfo::Preview),
             area: self.fit_to,

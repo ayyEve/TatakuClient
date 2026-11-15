@@ -95,13 +95,15 @@ impl Game {
     ) -> Self {
         let infos = engine::gameplay::GamemodeInfos::new(gamemodes);
 
+        let runtime = Rc::new(tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+        );
+        let _guard = runtime.enter();
+
         Self {
             actions: actions::ActionQueue::new(),
-            runtime: Rc::new(tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-            ),
 
             // engine
             #[cfg(feature="graphics")] window,
@@ -152,6 +154,7 @@ impl Game {
                 values: TatakuValues::new(&infos, settings),
                 custom: common::reflect::DynMap::default()
             },
+            runtime,
         }
     }
 

@@ -861,7 +861,7 @@ impl Game {
                 }
 
                 self.resize_bg();
-                
+
                 // unload the old image so the atlas can reuse the space
                 self.skin_manager.free_by_usage(graphics::SkinUsage::Background, false);
             },
@@ -963,6 +963,11 @@ impl Game {
                             manager.add_action(actions::gameplay::GameplayAction::FitToArea(bounds));
                         }
                         manager.reset();
+
+                        if config.jump_to_current_audio_time {
+                            let time = self.values.song.position;
+                            manager.add_action(actions::gameplay::GameplayAction::JumpToTime { time, skip_intro: true });
+                        }
 
                         use crate::prelude::ui;
                         let id = self.next_gameplay_id();
