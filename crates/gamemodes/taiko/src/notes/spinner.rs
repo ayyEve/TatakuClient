@@ -94,15 +94,14 @@ impl Spinner {
             //TODO: draw a counter
         } else {
             // just draw the note on the playfield
-            if x + shell.settings.note_radius < shell.playfield.pos.x
-                || x - shell.settings.note_radius > shell.playfield.pos.x + shell.playfield.size.x
-            {
+            if pos.x - shell.settings.note_radius > shell.playfield.pos.x + shell.playfield.size.x {
                 return;
             }
 
             if let Some(image) = self.spinner_image.clone() {
                 let transform = graphics::Transform {
                     origin: image.size() / 2.0, // center
+                    scale: Vector2::ONE * shell.settings.note_radius / image.size(),
                     pos,
                     ..graphics::Transform::IDENTITY
                 };

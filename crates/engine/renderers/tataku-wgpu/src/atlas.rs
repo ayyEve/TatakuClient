@@ -37,28 +37,28 @@ impl WgpuAtlas {
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
 
-        
+
         let atlas_size = device
             .limits()
             .max_texture_dimension_2d
             .min(8192);
-    
+
         let mut textures = Vec::new();
         for _ in 0..Self::LAYER_COUNT.start {
             textures.push(create_texture(
                 device,
-                format, 
+                format,
                 atlas_size,
             ));
         }
         let (bind_group, layout) = create_bind_group(
-            device, 
-            &textures, 
+            device,
+            &textures,
             &sampler
         );
 
@@ -81,7 +81,7 @@ impl WgpuAtlas {
     }
 
     pub fn reserve(
-        &mut self, 
+        &mut self,
         width: u32,
         height: u32,
         glyph: bool,
@@ -90,8 +90,8 @@ impl WgpuAtlas {
     ) -> AtlasResult {
         if glyph {
             return self.glyph_atlas.reserve(
-                width, 
-                height, 
+                width,
+                height,
                 self.textures.len() as u32 - 1
             );
         }
@@ -112,7 +112,7 @@ impl WgpuAtlas {
             AtlasResult::NoSpace
         }
     }
-    
+
     pub fn remove(&mut self, tex: tataku::TextureReference) {
         self.atlas.remove_entry(tex);
     }
@@ -131,7 +131,7 @@ impl WgpuAtlas {
     }
 
     pub fn dump(
-        &self, 
+        &self,
         engine: &crate::WgpuEngine,
         path: &str,
     ) {
@@ -167,8 +167,8 @@ impl WgpuAtlas {
         device: &wgpu::Device,
     ) {
         let (bind_group, layout) = create_bind_group(
-            device, 
-            &self.textures, 
+            device,
+            &self.textures,
             &self.sampler,
         );
 
@@ -177,12 +177,12 @@ impl WgpuAtlas {
     }
 
     fn add_layer(
-        &mut self, 
+        &mut self,
         device: &wgpu::Device,
     ) {
         let first = self.textures[0].texture();
         let tex = create_texture(
-            device, 
+            device,
             first.format(),
             first.width()
         );
@@ -209,8 +209,8 @@ fn create_bind_group(
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { 
-                        filterable: true 
+                    sample_type: wgpu::TextureSampleType::Float {
+                        filterable: true
                     },
                     view_dimension: wgpu::TextureViewDimension::D2,
                     multisampled: false,
@@ -225,10 +225,10 @@ fn create_bind_group(
             },
         ],
     });
-    
+
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("texture array bind group"),
-        layout: &layout, 
+        layout: &layout,
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
@@ -261,8 +261,8 @@ fn create_texture(
         dimension: wgpu::TextureDimension::D2,
         format,
         view_formats: &[
-            format.add_srgb_suffix(), 
-            format.remove_srgb_suffix() 
+            format.add_srgb_suffix(),
+            format.remove_srgb_suffix()
         ],
         usage: wgpu::TextureUsages::TEXTURE_BINDING
             | wgpu::TextureUsages::COPY_DST
@@ -293,11 +293,11 @@ impl GlyphAtlas {
         self.count = 0;
         self.largest_glyph_size = [0, 0];
     }
-    
+
     /// just get the next square in the list
     pub fn reserve(
-        &mut self, 
-        width: u32, 
+        &mut self,
+        width: u32,
         height: u32,
         glyph_layer: u32,
     ) -> AtlasResult {
@@ -325,7 +325,7 @@ impl GlyphAtlas {
         let x = w * (c % self.glyphs_per_row) + ATLAS_PADDING;
         let y = h * (c / self.glyphs_per_row) + ATLAS_PADDING;
 
-        if x + w > self.size[0] 
+        if x + w > self.size[0]
         || y + h > self.size[1] {
             return AtlasResult::NoSpace
         }

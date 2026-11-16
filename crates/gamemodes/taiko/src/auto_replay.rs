@@ -16,6 +16,7 @@ impl AutoReplay {
     pub fn update(
         &mut self,
         time: f32,
+        beat_length: f32,
         queues: &mut [NoteQueue],
         frames: &mut Vec<ReplayAction>
     ) {
@@ -53,10 +54,14 @@ impl AutoReplay {
                 if note.note_type() != NoteType::Note {
                     let (end_time, hits_to_complete) = match note {
                         HitObject::Note(_) => unreachable!(),
-                        HitObject::Drumroll(drumroll) => (
-                            drumroll.end_time,
-                            50.0,
-                        ),
+                        HitObject::Drumroll(drumroll) => {
+                            let quarters = beat_length / 4.0;
+
+                            (
+                                drumroll.end_time,
+                                (drumroll.end_time - drumroll.time) / quarters,
+                            )
+                        },
                         HitObject::Spinner(spinner) => (
                             spinner.end_time,
                             spinner.hits_required as f32,

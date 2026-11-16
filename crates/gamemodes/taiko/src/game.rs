@@ -805,7 +805,13 @@ impl Gamemode for TaikoGame {
             ];
 
             // get auto inputs
-            self.auto_replay.update(shell.time, &mut queues, &mut pending_frames);
+            self.auto_replay.update(
+                shell.time,
+                shell.timing_points.timing_point_at(shell.time, false)
+                    .beat_length,
+                &mut queues,
+                &mut pending_frames,
+            );
 
             self.notes = queues.remove(0);
             self.other_notes = queues.remove(0);

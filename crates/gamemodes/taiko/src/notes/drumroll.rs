@@ -114,7 +114,7 @@ impl Drumroll {
                     image.size().x,
                     image.size().y / 2.0,
                 ), // right-center
-                scale: Vector2::new(1.0, scale),
+                scale: Vector2::ONE * scale,
                 pos,
                 ..graphics::Transform::IDENTITY
             }.matrix()));
@@ -122,7 +122,7 @@ impl Drumroll {
             // end
             shell.list.push(image.clone().with_transform(graphics::Transform {
                 origin: Vector2::with_y(image.size().y / 2.0), // left-center
-                scale: Vector2::new(1.0, scale),
+                scale: Vector2::ONE * scale,
                 pos: end_pos,
                 ..graphics::Transform::IDENTITY
             }.matrix()));
