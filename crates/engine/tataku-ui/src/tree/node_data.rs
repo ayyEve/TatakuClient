@@ -17,4 +17,6 @@ pub(super) struct NodeData {
 
     // /// The computation result from layout algorithm
     // pub detailed_layout_info: taffy::DetailedLayoutInfo,
+
+    pub hoisted_children: Vec<taffy::NodeId>
 }

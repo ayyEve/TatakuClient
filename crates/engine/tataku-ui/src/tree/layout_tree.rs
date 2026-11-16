@@ -106,8 +106,6 @@ impl<Action: Send + Sync> taffy::LayoutFlexboxContainer for LayoutTree<'_, Actio
     }
 }
 
-// FIXME: implement these? seems to be fine without them for now tho
-#[allow(unused)]
 impl<Action: Send + Sync> taffy::LayoutContainingBlock for LayoutTree<'_, Action> {
     type OofItemStyle<'b> = CssStyleResolver<'b> where Self: 'b;
 
@@ -116,11 +114,13 @@ impl<Action: Send + Sync> taffy::LayoutContainingBlock for LayoutTree<'_, Action
     }
 
     fn clear_hoisted_children(&mut self, node_id: NodeId) {
-        // todo!()
+        let node = self.tree.nodes.get_mut(node_id.into()).unwrap();
+        node.hoisted_children.clear();
     }
 
     fn add_hoisted_children(&mut self, node_id: NodeId, hoisted: &[NodeId]) {
-        // todo!()
+        let node = self.tree.nodes.get_mut(node_id.into()).unwrap();
+        node.hoisted_children.extend_from_slice(hoisted);
     }
 }
 
@@ -246,17 +246,17 @@ impl<Action: Send + Sync> taffy::RoundTree for LayoutTree<'_, Action> {
         matches!(position, Position::Absolute)
     }
     
-    // FIXME
     #[allow(unused)]
     fn hoisted_child_count(&self, node_id: NodeId) -> usize {
-        0
-        // todo!()
+        let node = self.tree.nodes.get(node_id.into()).unwrap();
+        node.hoisted_children.len()
     }
     
-    // FIXME
     #[allow(unused)]
     fn get_hoisted_child_id(&self, node_id: NodeId, index: usize) -> NodeId {
-        todo!()
+        let node = self.tree.nodes.get(node_id.into()).unwrap();
+        *node.hoisted_children.get(index)
+            .expect("taffy trying to get hoisted id at index that doesnt exist?")
     }
 }
 
