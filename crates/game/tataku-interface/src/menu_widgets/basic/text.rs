@@ -136,17 +136,6 @@ impl Widget<actions::Action> for Text {
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         let bounds = shell.tree.absolute_bounds(self.node_id).unwrap();
 
-        let style = shell.tree.get_style(self.node_id).unwrap();
-        if self.text.get() == "Taiko" {
-            println!(
-                "width {:.1?}, min width {:.1?}, min height {:.1?} bounds {:.1}",
-                style.width,
-                style.min_width,
-                style.min_height,
-                bounds.size.x
-            );
-        }
-
         let refresh_text = self.text.update(shell.values);
 
         if refresh_text {
