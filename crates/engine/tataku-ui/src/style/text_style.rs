@@ -66,7 +66,7 @@ impl Default for TextStyle {
 impl<B: parley::Brush + From<Color>> From<TextStyle> for parley::TextStyle<'_, B> {
     fn from(value: TextStyle) -> Self {
         Self {
-             // todo:
+            // todo:
             font_stack: match value.font {
                 DefaultFont::Main => parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::SansSerif)),
                 DefaultFont::FontAwesome => parley::FontStack::Single(parley::FontFamily::Generic(parley::GenericFamily::Emoji)),

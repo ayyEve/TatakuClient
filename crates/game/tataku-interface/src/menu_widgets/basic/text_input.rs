@@ -45,7 +45,7 @@ pub struct TextInput {
     placeholder: WidgetText,
     value: String,
     variable: engine::VariablePathResolver,
-    text: widgets::Text,
+    text: widgets::WidgetBase<widgets::Text>,
 
     load_from_variable: bool,
 
@@ -60,7 +60,8 @@ impl TextInput {
         placeholder: WidgetText,
         variable: engine::VariablePathResolver,
     ) -> Self {
-        let text = widgets::Text::new("".into());
+        let text = widgets::Text::new("".into())
+            .into_widget_base();
 
         Self {
             secure: false,
@@ -380,7 +381,6 @@ impl TextInput {
                 HandleKeyResult::TextChanged
             }
             Key::Backspace => {
-                println!("backspace");
                 match &mut self.cursor {
                     Cursor::Position(n) => {
                         if *n > 0 {
@@ -541,7 +541,7 @@ impl TextInput {
     }
 
     fn position_to_index(&self, pos: f32) -> usize {
-        let layout = self.text.text_layout();
+        let layout = self.text.inner.text_layout();
 
         if self.value.is_empty() { // since the layout would be the placeholder
             return 0;
@@ -565,7 +565,7 @@ impl TextInput {
     }
 
     fn index_to_position(&self, index: usize) -> f32 {
-        let layout = self.text.text_layout();
+        let layout = self.text.inner.text_layout();
 
         if index >= self.value.len() {
             return layout.full_width();
@@ -814,7 +814,7 @@ impl Widget<actions::Action> for TextInput {
 
         if !state.active() || self.value.is_empty() { return; }
 
-        let layout = self.text.text_layout();
+        let layout = self.text.inner.text_layout();
         let height = layout.height(); // since there is only one line
 
         let y_offset = (bounds.size.y - height) / 2.0;
@@ -887,7 +887,7 @@ impl Widget<actions::Action> for TextInput {
             warn!("failed to insert text input to reflect: {e:?}");
         }
 
-        self.text.text.set(self.visible_text().into_owned());
+        self.text.inner.text.set(self.visible_text().into_owned());
         self.text.update(shell);
     }
 }

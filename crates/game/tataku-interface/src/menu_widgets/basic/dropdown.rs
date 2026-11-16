@@ -34,7 +34,10 @@ impl Dropdown {
         on_change: DropdownOnChange,
         placeholder: widgets::WidgetText,
     ) -> Self {
-        let main_button = widgets::Button::new(widgets::Text::new(placeholder.clone()))
+        let main_button = widgets::Button::new(
+            widgets::Text::new(placeholder.clone())
+                .into_widget_base()
+        )
             .into_widget_base();
 
         Self {
@@ -67,7 +70,7 @@ impl Dropdown {
         shell.state_mut(self.node_id).unwrap().set_active(false);
         self.value.set_index(index);
 
-        self.main_button.inner.child.text.set(enum_variants[index].clone());
+        self.main_button.inner.child.inner.text.set(enum_variants[index].clone());
 
         // debug!("setting value to {index} ({})", self.variants.get_displays()[index]);
 
@@ -173,7 +176,7 @@ impl Widget<actions::Action> for Dropdown {
         });
 
         if let Some(index) = self.value.index() {
-            self.main_button.inner.child.text = buttons[index].inner.child.text.clone();
+            self.main_button.inner.child.inner.text = buttons[index].inner.child.inner.text.clone();
         }
 
         self.main_button.layout(shell)?;
@@ -261,7 +264,7 @@ impl Widget<actions::Action> for Dropdown {
 
     fn update(&mut self, shell: &mut UpdateShell<actions::Action>) {
         if self.value.index().is_none() {
-            self.main_button.inner.child.text = self.placeholder.clone();
+            self.main_button.inner.child.inner.text = self.placeholder.clone();
         }
 
         self.main_button.update(shell);
@@ -341,7 +344,7 @@ impl Widget<actions::Action> for Dropdown {
             };
 
             if *index != selected && let Some(selected) = selected {
-                self.main_button.inner.child.text.set(enum_variants[selected].clone());
+                self.main_button.inner.child.inner.text.set(enum_variants[selected].clone());
             }
 
             *index = selected;
@@ -441,7 +444,7 @@ impl From<Vec<BuildableAction>> for DropdownOnChange {
     }
 }
 
-type DropdownButton = widgets::WidgetBase<widgets::Button<widgets::Text>>;
+type DropdownButton = widgets::WidgetBase<widgets::Button<widgets::WidgetBase<widgets::Text>>>;
 
 pub enum DropdownVariants {
     Variable(engine::VariablePathResolver),
@@ -515,7 +518,10 @@ impl DropdownVariants {
                 ))
             });
 
-            let button = widgets::Button::new(widgets::Text::new(display.into()))
+            let button = widgets::Button::new(
+                    widgets::Text::new(display.into())
+                        .into_widget_base()
+                )
                 .on_press_left(Some(widgets::ButtonOnClick::Callback(callback)))
                 .into_widget_base();
 
