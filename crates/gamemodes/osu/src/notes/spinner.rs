@@ -15,8 +15,11 @@ use engine::{
     },
     gameplay::{
         judgments::HitJudgment,
-    }
+    },
+    ui,
 };
+
+use interface::parley;
 
 #[cfg(feature="graphics")]
 use engine::graphics;
@@ -47,7 +50,7 @@ pub struct Spinner {
     pub rotations_required: u16,
     /// how many rotations have been completed?
     pub rotations_completed: u16,
-    pub missed: bool,
+    pub judged: bool,
 
     /// main spinny
     #[cfg(feature="graphics")] spinner_circle: Option<graphics::Image>,
@@ -58,7 +61,11 @@ pub struct Spinner {
     /// gets smaller towards end of spinner, from 100% to 0%
     #[cfg(feature="graphics")] spinner_approach: Option<graphics::Image>,
 
-    points_queue: Vec<HitJudgment>
+
+    #[cfg(feature = "graphics")] rpm_layout: Option<Arc<parley::Layout<Color>>>,
+    #[cfg(feature = "graphics")] rpm_text_size: Vector2,
+
+    pub points_queue: Vec<HitJudgment>
 }
 
 impl Spinner {
@@ -79,10 +86,34 @@ impl Spinner {
         }
     }
 
+    fn text_layout(
+        text: &str,
+        scale: f32,
+        context: &mut ui::widget::TextLayoutContexts,
+    ) -> (Arc<parley::Layout<Color>>, Vector2) {
+        let style = ui::style::TextStyle {
+            font_size: 30.0 * scale,
+            ..Default::default()
+        };
+
+        let mut layout = context.simple_text(
+            text,
+            &style,
+        );
+        layout.break_all_lines(None);
+
+        let size = Vector2::new(
+            layout.width(),
+            layout.height(),
+        );
+
+        (Arc::new(layout), size)
+    }
+
     pub fn update(&mut self, shell: &mut UpdateShell) {
         const WINDOW_PERIOD_MILLIS: f32 = 1000.0;
 
-        if self.missed { return; }
+        if self.judged { return; }
 
         let cursor_pos = shell.coords.to_osu(shell.cursor_pos);
 
@@ -137,6 +168,7 @@ impl Spinner {
             self.display_rotation += self.rotation_velocity * (shell.time - self.last_update);
             if self.display_rotation >= PI * 2.0 || self.display_rotation <= -PI * 2.0 {
                 self.rotations_completed += 1;
+
                 if self.rotations_completed >= self.rotations_required && (self.rotations_completed - self.rotations_required).is_multiple_of(3) {
                     self.points_queue.push(OsuHitJudgments::SpinnerPoint);
                 }
@@ -147,6 +179,16 @@ impl Spinner {
             self.rotation += diff;
             // if self.rotation >= PI * 2.0 || self.rotation <= -PI * 2.0 { self.rotations_completed += 1; }
             self.rotation %= PI * 2.0;
+
+            let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
+            let (layout, size) = Self::text_layout(
+                &format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required),
+                shell.coords.scale,
+                shell.font_contexts,
+            );
+
+            self.rpm_layout = Some(layout);
+            self.rpm_text_size = size;
         }
 
         self.last_mouse_angle = mouse_angle;
@@ -157,7 +199,7 @@ impl Spinner {
     pub fn draw(&self, shell: &mut DrawShell) {
         if shell.time < self.time || shell.time > self.end_time { return }
 
-        let center = FIELD_SIZE / 2.0;
+        let center = shell.coords.playfield.pos + shell.coords.playfield.size / 2.0;
 
         let scale = Vector2::ONE * shell.coords.cs;
 
@@ -270,21 +312,18 @@ impl Spinner {
             ).with_transform(shell.transform * transform.matrix()));
         }
 
-        // draw a counter
-        let rpm = (self.rotation_velocity / (2.0 * PI)) * 1000.0 * 60.0;
-        // todo:
-        // let mut txt = Text::new(
-        //     Vector2::ZERO,
-        //     30.0,
-        //     format!("{:.0}rpm ({}/{})", rpm.abs(), self.rotations_completed, self.rotations_required), // format!("{:.0}rpm", rpm.abs()),
-        //     Color::BLACK,
-        //     DefaultFont::Main
-        // );
-        // txt.center_text(&Bounds::new(
-        //     Vector2::new(0.0, self.pos.y + 50.0),
-        //     Vector2::new(self.pos.x * 2.0, 50.0)
-        // ));
-        // list.push(txt);
+        // draw counter
+        if let Some(layout) = self.rpm_layout.clone() {
+            let transform = graphics::Transform {
+                origin: self.rpm_text_size / 2.0,
+                pos: center + Vector2::with_y(shell.coords.playfield.size.y / 4.0),
+                ..graphics::Transform::IDENTITY
+            };
+
+            shell.list.push(graphics::Text::new(layout)
+                .with_transform(shell.transform * transform.matrix())
+            );
+        }
     }
 
     pub fn reset(&mut self) {
@@ -295,8 +334,9 @@ impl Spinner {
         self.rotation_velocity = 0.0;
         self.rotations_completed = 0;
         self.rotation_windows = [0.0; 2];
-        self.missed = false;
+        self.judged = false;
 
+        self.rpm_layout = None;
         self.points_queue.clear();
     }
 

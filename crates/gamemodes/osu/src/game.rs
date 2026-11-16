@@ -1096,25 +1096,42 @@ impl Gamemode for OsuGame {
                 );
             }
 
-            if let HitObject::Slider(slider) = note {
-                let iter = slider.pending_combo.iter()
-                    .skip(slider.judgements_added)
-                    .cloned();
+            match note {
+                HitObject::Circle(_) => {},
+                HitObject::Slider(slider) => {
+                    let iter = slider.pending_combo.iter()
+                        .skip(slider.judgements_added)
+                        .copied();
 
-                for (judgement, pos) in iter {
-                    shell.add_judgment(judgement);
-                    #[cfg(feature="graphics")]
-                    Self::add_judgement_indicator(
-                        pos,
-                        &judgement,
-                        &self.coords,
-                        &self.judgement_images,
-                        &self.settings,
-                        shell
-                    );
+                    for (judgement, pos) in iter {
+                        shell.add_judgment(judgement);
+                        #[cfg(feature="graphics")]
+                        Self::add_judgement_indicator(
+                            pos,
+                            &judgement,
+                            &self.coords,
+                            &self.judgement_images,
+                            &self.settings,
+                            shell
+                        );
+                    }
+
+                    slider.judgements_added = slider.pending_combo.len();
+                },
+                HitObject::Spinner(spinner) => {
+                    for judgement in spinner.points_queue.take() {
+                        shell.add_judgment(judgement);
+                        #[cfg(feature="graphics")]
+                        Self::add_judgement_indicator(
+                            FIELD_SIZE / 2.0,
+                            &judgement,
+                            &self.coords,
+                            &self.judgement_images,
+                            &self.settings,
+                            shell
+                        );
+                    }
                 }
-
-                slider.judgements_added = slider.pending_combo.len();
             }
 
             // check if note was missed
@@ -1143,15 +1160,21 @@ impl Gamemode for OsuGame {
                         }
                     },
                     HitObject::Spinner(spinner) => {
-                        if !spinner.missed && spinner.rotations_completed < spinner.rotations_required {
-                            spinner.missed = true;
+                        if !spinner.judged {
+                            spinner.judged = true;
 
-                            let j = OsuHitJudgments::SpinnerMiss;
-                            shell.add_judgment(j);
+                            // todo: other judgements
+                            let judge = if spinner.rotations_completed >= spinner.rotations_required {
+                                OsuHitJudgments::X300
+                            } else {
+                                OsuHitJudgments::SpinnerMiss
+                            };
+
+                            shell.add_judgment(judge);
                             #[cfg(feature="graphics")]
                             Self::add_judgement_indicator(
                                 FIELD_SIZE / 2.0,
-                                &j,
+                                &judge,
                                 &self.coords,
                                 &self.judgement_images,
                                 &self.settings,
@@ -1389,7 +1412,7 @@ impl Gamemode for OsuGame {
                         slider.initial_hit = Some(OsuHitJudgments::Miss);
                     },
                     HitObject::Spinner(spinner) => {
-                        spinner.missed = true;
+                        spinner.judged = true;
                     },
                 }
 

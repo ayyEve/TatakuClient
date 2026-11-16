@@ -132,7 +132,7 @@ impl AutoReplay {
                     } else if time >= spinner.time {
                         any_checked = true;
 
-                        if !self.holding.contains_key(&i) && !spinner.missed {
+                        if !self.holding.contains_key(&i) && !spinner.judged {
                             self.press_counter += 1;
 
                             let k = self.get_key();
