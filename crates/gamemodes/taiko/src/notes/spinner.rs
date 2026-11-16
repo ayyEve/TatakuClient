@@ -101,7 +101,7 @@ impl Spinner {
             if let Some(image) = self.spinner_image.clone() {
                 let transform = graphics::Transform {
                     origin: image.size() / 2.0, // center
-                    scale: Vector2::ONE * shell.settings.note_radius / image.size(),
+                    scale: Vector2::ONE * 2.0 * shell.settings.note_radius / NOTE_TEX_SIZE,
                     pos,
                     ..graphics::Transform::IDENTITY
                 };

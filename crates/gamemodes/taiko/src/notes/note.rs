@@ -89,16 +89,6 @@ impl Note {
             HitType::Kat => shell.settings.kat_color.color,
         };
 
-        if let Some(image) = self.overlay.clone() {
-            let transform = graphics::Transform {
-                origin: image.size() / 2.0,
-                scale: Vector2::ONE * (radius * 2.0) / NOTE_TEX_SIZE,
-                pos,
-                ..graphics::Transform::IDENTITY
-            };
-
-            shell.list.push(image.with_transform(transform.matrix()));
-        }
 
         if let Some(mut image) = self.circle.clone() {
             let transform = graphics::Transform {
@@ -129,6 +119,17 @@ impl Note {
             }
 
             shell.list.push(circle.with_transform(transform.matrix()));
+        }
+
+        if let Some(image) = self.overlay.clone() {
+            let transform = graphics::Transform {
+                origin: image.size() / 2.0,
+                scale: Vector2::ONE * (radius * 2.0) / NOTE_TEX_SIZE,
+                pos,
+                ..graphics::Transform::IDENTITY
+            };
+
+            shell.list.push(image.with_transform(transform.matrix()));
         }
     }
 
