@@ -85,7 +85,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
         &mut self,
         mut node: Box<dyn Widget<Action>>,
         values: &mut dyn Reflect,
-        
+
         default_css: &str,
         text_layout_contexts: &mut TextLayoutContexts,
     ) {
@@ -116,7 +116,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
         node.init_style(&mut shell);
         shell.tree.update_style(
-            root, 
+            root,
             |s| *s = CssStyle::menu_layout()
         );
 
@@ -130,7 +130,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     }
 
     /// Overrides a node's display without affecting the underlying style
-    /// 
+    ///
     /// Also marks dirty and for relayout
     pub fn override_display(
         &mut self,
@@ -174,14 +174,14 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
             tree: self,
         }.compute_layout(root, space);
 
-        self.update_contexts();
+        self.update_contexts(values);
     }
 
 
-    pub fn update_contexts(&mut self) {
+    pub fn update_contexts(&mut self, values: &dyn Reflect) {
         // update absolute positions and matrices
         let matrix = Matrix::IDENTITY.trans(self.bounds.pos);
-        self.recurse_update_context(self.root, matrix);
+        self.recurse_update_context(self.root, matrix, values);
 
         // update spatial navigation
         // SpatialNagivation::new(self)
@@ -191,7 +191,8 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
     fn recurse_update_context(
         &mut self,
         node: NodeId,
-        mut matrix: Matrix
+        mut matrix: Matrix,
+        values: &dyn Reflect,
     ) {
         if !self.nodes.contains_key(node.into()) {
             error!("node not in tree!!! {node:?}");
@@ -232,18 +233,33 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
 
 
         for child in self.children(node).into_owned() {
-            self.recurse_update_context(child, matrix);
+            let ctx = &self
+                .node_context_data[child.into()];
+            let style = &ctx.current_style().0;
+
+            let position = style.position.resolve_copied(values)
+                .unwrap_or_default();
+
+            let out_of_flow = matches!(position, Position::Absolute);
+
+            let matrix = if out_of_flow {
+                Matrix::IDENTITY
+            } else {
+                matrix
+            };
+
+            self.recurse_update_context(child, matrix, values);
         }
     }
 
-    pub fn update_context(&mut self, node: NodeId) {
+    pub fn update_context(&mut self, node: NodeId, values: &dyn Reflect) {
         let our_matrix = self
             .get_context(node)
             .map_or_else(
                 || Matrix::IDENTITY.trans(self.bounds.pos),
                 |p| p.global_transform
             );
-        self.recurse_update_context(node, our_matrix);
+        self.recurse_update_context(node, our_matrix, values);
     }
 
     pub fn absolute_bounds(&self, node: NodeId) -> Option<Bounds> {
@@ -514,7 +530,7 @@ impl<Action: Send + Sync + 'static> Tree<Action> {
                 actions,
                 messages,
                 skin_manager,
-                
+
                 default_css,
                 text_layout_contexts,
             };
@@ -1009,8 +1025,8 @@ mod export_tree {
             };
 
             Self::export_node_xml(
-                &tree, 
-                &mut lines, 
+                &tree,
+                &mut lines,
                 0,
                 id,
             );
@@ -1019,7 +1035,7 @@ mod export_tree {
         }
 
         fn export_node_xml(
-            tree: &LayoutTree<A>, 
+            tree: &LayoutTree<A>,
             lines: &mut Vec<String>,
             indent: usize,
             id: NodeId,
@@ -1046,13 +1062,13 @@ mod export_tree {
                 tree.values,
             );
             lines.push(String::new());
-            
+
             let children = tree.child_ids(id);
             for i in children {
                 Self::export_node_xml(
-                    tree, 
-                    lines, 
-                    indent + 1, 
+                    tree,
+                    lines,
+                    indent + 1,
                     i
                 );
             }

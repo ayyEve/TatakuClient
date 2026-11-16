@@ -293,7 +293,7 @@ impl UiManager {
                 actions,
                 &mut self.messages,
                 skin_manager,
-                
+
                 self.default_css,
                 text_layout_contexts
             );
@@ -399,7 +399,7 @@ impl UiManager {
             // }
 
             UiActionType::ContextChanged => {
-                tree.update_context(node);
+                tree.update_context(node, values);
             }
 
             UiActionType::UpdateStyleWith(f) => {
