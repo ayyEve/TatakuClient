@@ -102,17 +102,27 @@ impl Drumroll {
 
         // start + end circles
         if let Some(image) = &self.end_image {
+            let scale = 2.0 * radius / image.size().y;
+
+            let mut start = image.clone();
+
+            start.flip = graphics::ImageFlip::Horizontal;
+
             // start
-            shell.list.push(image.clone().with_transform(graphics::Transform {
-                origin: image.size() / 2.0, // center
-                scale: Vector2::new(-1.0, 1.0),
+            shell.list.push(start.with_transform(graphics::Transform {
+                origin: Vector2::new(
+                    image.size().x,
+                    image.size().y / 2.0,
+                ), // right-center
+                scale: Vector2::new(1.0, scale),
                 pos,
                 ..graphics::Transform::IDENTITY
             }.matrix()));
 
             // end
             shell.list.push(image.clone().with_transform(graphics::Transform {
-                origin: image.size() / 2.0, // center
+                origin: Vector2::with_y(image.size().y / 2.0), // left-center
+                scale: Vector2::new(1.0, scale),
                 pos: end_pos,
                 ..graphics::Transform::IDENTITY
             }.matrix()));
