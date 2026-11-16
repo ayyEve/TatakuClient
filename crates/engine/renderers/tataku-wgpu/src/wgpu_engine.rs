@@ -620,15 +620,83 @@ impl<'window> WgpuEngine<'window> {
         let padded_width = width + 2 * tataku::ATLAS_PADDING;
         let padded_height = height + 2 * tataku::ATLAS_PADDING;
 
-        let top_bottom_padding = || (0..padded_width * tataku::ATLAS_PADDING * 4).map(|_| 0u8);
-        let left_right_padding = || (0..tataku::ATLAS_PADDING * 4).map(|_| 0u8);
+        let top_padding = (0..padded_width * tataku::ATLAS_PADDING * 4)
+            .map(|i| {
+                let index = (i / 4) % padded_width;
+                let component = i % 4;
 
-        let data = top_bottom_padding()
+                let index = if index < tataku::ATLAS_PADDING  {
+                    0
+                } else if index > tataku::ATLAS_PADDING + width - 1 {
+                    width - 1
+                } else {
+                    index - tataku::ATLAS_PADDING
+                };
+
+                let index = index * 4 + component;
+
+                data[index as usize]
+            });
+
+        let last_line = width * (height - 1);
+
+        let bottom_padding = (0..padded_width * tataku::ATLAS_PADDING * 4)
+            .map(|i| {
+                let index = (i / 4) % padded_width;
+                let component = i % 4;
+
+                let index = if index < tataku::ATLAS_PADDING  {
+                    last_line
+                } else if index > tataku::ATLAS_PADDING + width - 1 {
+                    last_line + width - 1
+                } else {
+                    last_line + index - tataku::ATLAS_PADDING
+                };
+
+                let index = index * 4 + component;
+
+                data[index as usize]
+            });
+
+        let left_padding = |y| {
+            let data = &*data;
+
+            (0..tataku::ATLAS_PADDING * 4)
+                .map(move |i| {
+                    let index = width * y;
+                    let component = i % 4;
+
+                    let index = index * 4 + component;
+
+                    data[index as usize]
+                })
+        };
+
+        let right_padding = |y| {
+            let data = &*data;
+
+            (0..tataku::ATLAS_PADDING * 4)
+                .map(move |i| {
+                    let index = width * y + width - 1;
+                    let component = i % 4;
+
+                    let index = index * 4 + component;
+
+                    data[index as usize]
+                })
+        };
+
+        let data = top_padding
             .chain(
                 data.chunks_exact(width as usize * 4)
-                    .flat_map(|data| left_right_padding().chain(data.iter().copied()).chain(left_right_padding()))
+                    .enumerate()
+                    .flat_map(|(y, data)| {
+                        left_padding(y as u32)
+                            .chain(data.iter().copied())
+                            .chain(right_padding(y as u32))
+                    })
             )
-            .chain(top_bottom_padding())
+            .chain(bottom_padding)
             .collect::<Vec<_>>();
 
         let texture_size = wgpu::Extent3d {
